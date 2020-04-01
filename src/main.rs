@@ -3,15 +3,15 @@ extern crate serde_derive;
 
 extern crate serde;
 extern crate serde_json;
-
 extern crate rand;
-
 extern crate base64;
+extern crate argparse;
 
 use std::io::prelude::*;
 use std::fs::File;
 
 use rand::prelude::*;
+use argparse::{ArgumentParser, Store};
 
 // It would be nice to make this structure configurable.
 #[derive(Serialize)]
@@ -22,6 +22,21 @@ struct IngestRecord {
 }
 
 fn main() {
+    let mut files = 1;
+    let mut lines = 1;
+    let mut filename_prefix = "file".to_string();
+
+    // this block limits scope of borrows by ap.refer() method - see https://github.com/tailhook/rust-argparse
+    {
+        let mut ap = ArgumentParser::new();
+        ap.set_description("make JSON");
+        ap.refer(&mut files).add_option(&["-f", "--files"], Store, "Number of files");
+        ap.refer(&mut lines).add_option(&["-l", "--lines"], Store, "Number of lines");
+        ap.refer(&mut filename_prefix).add_option(&["-p", "--filename-prefix"], Store, "Filename prefix");
+        ap.parse_args_or_exit();
+    }
+
+    // A fixed structure to be filled in inside the loops
     let mut ingest_record = IngestRecord {
         name: String::from("Miguel"),
         age: 0,
@@ -58,11 +73,11 @@ fn main() {
     // Since the data is not random, just fill it up.
     // ingest_record.data = (0..4096).map({|_| "X"}).collect::<String>();
 
-    for n in 0..10 {
-        let filename = format!("file{}.json", n);
+    for n in 0..files {
+        let filename = format!("{}{}.json", filename_prefix, n);
         let mut f = File::create(filename).expect("unable to create file");
     
-        for _ in 0..1000 {
+        for _ in 0..lines {
             rng.fill(&mut random_bytes);
 
             // base64::encode works with vec for larger data. 
